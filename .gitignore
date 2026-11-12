@@ -1,0 +1,15 @@
+# 依赖与临时产物
+node_modules/
+.smoke/
+.preview/
+.diag/
+.shot/
+*.bak
+*.log
+
+# 本地工具与个人笔记
+.workbuddy/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

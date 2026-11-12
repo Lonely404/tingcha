@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbf8f2">
+<meta name="color-scheme" content="light">
+<title>听岔 · 你以为你说对了</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%A6%8A%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="./css/style.css">
+<!-- 提前并行拉取模块图，避免 main.js -> 5 个子模块的瀑布式解析 -->
+<link rel="modulepreload" href="./js/engine.js">
+<link rel="modulepreload" href="./js/matcher.js">
+<link rel="modulepreload" href="./js/lookshan.js">
+<link rel="modulepreload" href="./js/asr.js">
+<link rel="modulepreload" href="./js/api.js">
+</head>
+<body>
+
+<div id="app">
+
+  <header class="hud">
+    <div class="brand">
+      <span class="logo">听岔</span>
+      <span class="tag">知乎黑客松 · S3 湾区共创季</span>
+    </div>
+    <div class="hud-right">
+      <span class="stat" id="stat-scene">场景 —/3</span>
+      <span class="stat" id="stat-miss">说岔 0 次</span>
+      <button class="ghost" id="btn-restart" type="button">重来</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="chat-wrap">
+      <div class="chat" id="chat" aria-live="polite"></div>
+    </section>
+
+    <aside class="kanzan" id="kanzan">
+      <div class="kanzan-art" id="kanzan-art" data-state="idle">
+        <!-- 占位形象：设计交付后换成 <img src="./assets/kanzan/idle.png"> -->
+        <svg viewBox="0 0 120 130" width="120" height="130" aria-label="刘看山占位形象">
+          <ellipse cx="60" cy="118" rx="30" ry="6" fill="rgba(20,26,40,.08)"/>
+          <path d="M28 46 L24 16 L48 32 Z" fill="#eef2f8" stroke="#c9d3e2" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M92 46 L96 16 L72 32 Z" fill="#eef2f8" stroke="#c9d3e2" stroke-width="2" stroke-linejoin="round"/>
+          <ellipse cx="60" cy="62" rx="34" ry="32" fill="#fbfcfe" stroke="#c9d3e2" stroke-width="2"/>
+          <ellipse cx="47" cy="58" rx="3.6" ry="4.6" fill="#1b2130"/>
+          <ellipse cx="73" cy="58" rx="3.6" ry="4.6" fill="#1b2130"/>
+          <ellipse cx="60" cy="74" rx="4.4" ry="3.4" fill="#1b2130"/>
+          <path d="M52 86 q8 6 16 0" stroke="#1b2130" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <circle cx="36" cy="72" r="4.6" fill="#ffd9de" opacity=".85"/>
+          <circle cx="84" cy="72" r="4.6" fill="#ffd9de" opacity=".85"/>
+          <g class="report-card" opacity="0">
+            <rect x="44" y="96" width="34" height="24" rx="3" fill="#fff" stroke="#c9d3e2" stroke-width="2"/>
+            <line x1="50" y1="104" x2="72" y2="104" stroke="#c9d3e2" stroke-width="2"/>
+            <line x1="50" y1="110" x2="66" y2="110" stroke="#c9d3e2" stroke-width="2"/>
+          </g>
+        </svg>
+      </div>
+      <div class="kanzan-bubble" id="kanzan-bubble" data-empty="true"></div>
+      <div class="kanzan-name">刘看山</div>
+    </aside>
+  </main>
+
+  <footer class="composer" id="composer">
+    <button class="mic" id="btn-mic" type="button" title="按住说话">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z" fill="currentColor"/>
+        <path d="M6 11a6 6 0 0 0 12 0M12 17v4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <span id="mic-label">说话</span>
+    </button>
+    <input id="input-text" type="text" placeholder="也可以直接打字说这句话…" autocomplete="off" spellcheck="false">
+    <button class="send" id="btn-send" type="button" disabled>说</button>
+    <div class="composer-hint" id="input-hint"></div>
+  </footer>
+
+</div>
+
+<!-- 开始页 -->
+<div class="overlay" id="start-screen">
+  <div class="panel">
+    <div class="panel-eyebrow">AI × 出海 · 粤语听岔实验</div>
+    <h1>你以为你说对了。</h1>
+    <p class="lede">
+      这是一个不给你打分的小游戏。你对着麦克风说一句粤语，
+      我们把它原样交给识别器——识别出来的那个版本，就是你这句话在对方耳朵里的样子。
+    </p>
+    <p class="lede dim">
+      说对了，剧情照常走。<br>
+      说岔了，你就会看见对方按「他听到的版本」回应你。
+    </p>
+    <div class="scene-picker" id="scene-picker" aria-busy="true">
+      <!-- 骨架：数据到位前先占位，避免开始页出现一块空白跳动 -->
+      <div class="scene-card skeleton"><span class="bar w60"></span><span class="bar w30"></span></div>
+      <div class="scene-card skeleton"><span class="bar w40"></span><span class="bar w55"></span></div>
+      <div class="scene-card skeleton"><span class="bar w50"></span><span class="bar w35"></span></div>
+    </div>
+    <div class="panel-foot">
+      <span id="capability-note"></span>
+    </div>
+  </div>
+</div>
+
+<!-- 结局报告 -->
+<div class="overlay hidden" id="report-screen">
+  <div class="panel report-panel">
+    <div class="panel-eyebrow">听岔报告</div>
+    <h2 id="report-title">这一局你岔了 <em>0</em> 次</h2>
+    <div class="pairs" id="report-pairs"></div>
+
+    <section class="block">
+      <h3>刘看山把这局看完了</h3>
+      <div class="explain" id="report-explain">生成中…</div>
+      <div class="src-tag" id="report-explain-src"></div>
+    </section>
+
+    <section class="block">
+      <h3>这事儿不止你一个</h3>
+      <div class="stories" id="report-stories"></div>
+      <div class="src-tag" id="report-stories-src"></div>
+    </section>
+
+    <div class="panel-actions">
+      <button class="primary" id="btn-again" type="button">再来一局</button>
+      <button class="ghost" id="btn-share" type="button">复制分享文案</button>
+    </div>
+  </div>
+</div>
+
+<!-- 启动失败兜底面板：默认隐藏，由经典脚本显示 -->
+<div class="overlay boot-error" id="boot-error" hidden>
+  <div class="panel">
+    <div class="panel-eyebrow">启动失败</div>
+    <h1 data-when="file">需要通过本地服务器打开</h1>
+    <h1 data-when="module">应用脚本没能启动</h1>
+
+    <p class="lede" data-when="file">
+      你大概是直接双击了 <code>index.html</code>。浏览器出于安全策略，不允许 <code>file://</code> 页面加载 ES 模块，
+      所以 <code>js/main.js</code> 一行都没执行——页面上的文字是静态 HTML，场景卡片自然是空的。
+    </p>
+    <p class="lede" data-when="module">
+      模块已被请求，但没有跑起来。常见原因是静态资源路径配错、服务器没返回正确的
+      <code>application/javascript</code> MIME 类型，或者脚本 404。
+    </p>
+
+    <pre class="code" id="boot-detail"></pre>
+
+    <div class="fix">
+      <div class="fix-step">
+        <span class="n">1</span>
+        <div>
+          <b>最快：双击项目根目录的 <code>start.bat</code></b>
+          <div class="sub">自动起服务并打开 http://localhost:8000</div>
+        </div>
+      </div>
+      <div class="fix-step">
+        <span class="n">2</span>
+        <div>
+          <b>或者手动起一个静态服务器</b>
+          <pre class="code">cd /d "D:\听岔"
+python -m http.server 8000</pre>
+          <div class="sub">然后访问 http://localhost:8000/index.html</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="panel-foot">
+      顺带一句：浏览器只在 <code>localhost</code> 或 <code>https</code> 下才给麦克风权限，
+      所以这个项目本来就不能靠双击打开——语音那一半会直接不可用。
+    </p>
+  </div>
+</div>
+
+<script type="module" src="./js/main.js" onerror="window.__bootFail__ && window.__bootFail__('module-load')"></script>
+
+<!-- 启动守护：必须是经典脚本。file:// 下模块脚本会被 CORS 拦掉，
+     此时 main.js 一行都不会执行，只能靠这里兜住，否则就是静默白屏。 -->
+<script>
+(function () {
+  var shown = false;
+
+  function show(reason, detail) {
+    if (shown) return;
+    shown = true;
+    var box = document.getElementById('boot-error');
+    if (!box) return;
+    box.hidden = false;
+    var isFile = reason === 'file';
+    Array.prototype.forEach.call(box.querySelectorAll('[data-when="file"]'), function (el) { el.hidden = !isFile; });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-when="module"]'), function (el) { el.hidden = isFile; });
+    if (detail) box.querySelector('#boot-detail').textContent = detail;
+    document.getElementById('start-screen').classList.add('hidden');
+  }
+  window.__bootFail__ = show;
+
+  var isFile = location.protocol === 'file:';
+  if (isFile) {
+    show('file', 'file:// 下浏览器拒绝加载 ES 模块（origin 为 null）。');
+  } else {
+    // http 下也要兜住：路径配错、MIME 不对、脚本 404 时同样会白屏
+    setTimeout(function () {
+      if (!window.__BOOT_OK__) show('module', '模块已请求，但 5 秒内未完成启动。');
+    }, 5000);
+  }
+
+  // 任何未捕获异常都不许静默，直接打到界面上（演示时最怕白屏没人知道为什么）
+  window.addEventListener('error', function (e) {
+    if (e && e.target && e.target.tagName === 'SCRIPT') return;
+    console.error('[听岔] 未捕获异常', e.error || e.message);
+  });
+})();
+</script>
+</body>
+</html>

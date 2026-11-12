@@ -1,0 +1,266 @@
+{
+  "_meta": {
+    "version": "0.1.0",
+    "owner": "语料主理（电信A）+ 主程共同冻结",
+    "note": "剧情图。节点三种类型：narrate（旁白/对方反应）、speak（等玩家开口）、ending（收尾）。speak 节点必须带 expect，指向 phonetic-map.json 的某个 key。剧本内容为占位样稿，等电信A的 15 条真实事故落地后替换。"
+  },
+
+  "scenes": [
+    {
+      "id": "cha-chaan-teng",
+      "title": "茶餐厅",
+      "subtitle": "下午三点，你第一次自己点单",
+      "entry": "enter",
+      "nodes": {
+        "enter": {
+          "type": "narrate",
+          "npc": "旁白",
+          "text": "下午三点，你走进一间老茶餐厅。吊扇在头顶慢慢转，伙计擦着同一只杯子，擦了很久。",
+          "next": "order"
+        },
+        "order": {
+          "type": "speak",
+          "npc": "伙计",
+          "npcLine": "（头也不抬）饮啲咩？",
+          "sayTo": "唔该，一杯冻柠茶",
+          "prompt": "你要说：唔该，一杯冻柠茶",
+          "expect": "ning-cha",
+          "onCorrect": "order-ok",
+          "onMishear": {
+            "ling-cha": "accident-ling-cha",
+            "naai-cha": "accident-naai-cha"
+          },
+          "onFallback": "accident-generic-1"
+        },
+        "order-ok": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「冻柠茶一杯——」他朝水吧扬声一喊，杯子应声落台。你听懂了，他也听懂了。",
+          "next": "bill"
+        },
+        "accident-ling-cha": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「冻零茶？」伙计的手停了一下，回头看了你一眼，「零茶系咩茶？」\n他转身去问水吧，水吧也答不上来。整间茶餐厅为你停了三秒。",
+          "explain": "ning-to-ling",
+          "next": "bill"
+        },
+        "accident-naai-cha": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「冻奶茶一杯。」伙计动作快得像在替你做完决定，杯子已经推到台面。\n你张了张嘴，最后什么也没说。反正奶茶也能喝。",
+          "explain": "ning-to-naai",
+          "next": "bill"
+        },
+        "accident-generic-1": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "伙计「啊？」了一声，把抹布搭在肩上，凑近了半个头：「讲多次？」\n周围两桌人一起看过来。",
+          "next": "bill"
+        },
+        "bill": {
+          "type": "speak",
+          "npc": "伙计",
+          "npcLine": "（收了杯，回头）盛惠廿二蚊。",
+          "sayTo": "唔该，埋单",
+          "prompt": "你要说：唔该，埋单",
+          "expect": "maai-daan",
+          "onCorrect": "bill-ok",
+          "onMishear": {
+            "maai-daan-egg": "accident-egg"
+          },
+          "onFallback": "accident-generic-2"
+        },
+        "bill-ok": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「好，廿二。」他撕下单子，「得闲再来。」\n你付了钱，走出门口，霓虹还没亮。",
+          "next": "end"
+        },
+        "accident-egg": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「买蛋？」伙计把抹布往肩上一搭，「我哋呢度唔卖蛋嘅，隔篱街市先有。」\n他很认真地替你指了街市的方向。你只好很认真地点了点头。",
+          "explain": "maai-to-egg",
+          "next": "end"
+        },
+        "accident-generic-2": {
+          "type": "narrate",
+          "npc": "伙计",
+          "text": "「咩话？」伙计把耳朵凑过来，「你讲咩？」\n你重复了一遍。他终于听懂了，但这一遍你已经是第二次说同一句话。",
+          "next": "end"
+        },
+        "end": {
+          "type": "ending",
+          "text": "你走出茶餐厅。霓虹还没亮，街上有风。"
+        }
+      }
+    },
+
+    {
+      "id": "convenience-store",
+      "title": "便利店",
+      "subtitle": "晚上十一点，你只想买支水",
+      "entry": "enter",
+      "nodes": {
+        "enter": {
+          "type": "narrate",
+          "npc": "旁白",
+          "text": "晚上十一点，便利店的灯白得有点刺眼。收银台后面的人正在刷手机，头没抬起来。",
+          "next": "ask"
+        },
+        "ask": {
+          "type": "speak",
+          "npc": "店员",
+          "npcLine": "（把扫码枪搁下）要埋先？",
+          "sayTo": "呢支几多钱？",
+          "prompt": "你要说：呢支几多钱？",
+          "expect": "gei-do-cin",
+          "onCorrect": "ask-ok",
+          "onMishear": {
+            "gei-do-cin-thousand": "accident-thousand"
+          },
+          "onFallback": "accident-generic-1"
+        },
+        "ask-ok": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "「八蚊。」他扫了一下，「要唔要袋？」",
+          "next": "bag"
+        },
+        "accident-thousand": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "「几多千？」他抬起头，手机还亮在手上，「先生，呢支水八蚊，唔使几千。」\n他把「先生」两个字说得很清楚。",
+          "explain": "cin-to-cin1",
+          "next": "bag"
+        },
+        "accident-generic-1": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "「吓？」他皱着眉看了你两秒，把你手上的水拿过去扫了一下，「八蚊。」\n他替你回答了那个你没被听懂的问题。",
+          "next": "bag"
+        },
+        "bag": {
+          "type": "speak",
+          "npc": "店员",
+          "npcLine": "（手停在袋子上方）要唔要？",
+          "sayTo": "唔使，我有胶袋",
+          "prompt": "你要说：唔使，我有胶袋",
+          "expect": "gaau-doi",
+          "onCorrect": "bag-ok",
+          "onMishear": {
+            "gaau-doi-handover": "accident-handover"
+          },
+          "onFallback": "accident-generic-2"
+        },
+        "bag-ok": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "「哦，好。」他把袋子塞回架子底下，「多谢，八蚊。」\n出门的时候，自动门在你身后关得很轻。",
+          "next": "end"
+        },
+        "accident-handover": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "「交带？」他把手收回去，表情突然严肃起来，「你要我交带咩？」\n他真的在等你说点什么。你举着那支水，站了大概五秒。",
+          "explain": "doi-to-daai",
+          "next": "end"
+        },
+        "accident-generic-2": {
+          "type": "narrate",
+          "npc": "店员",
+          "text": "他没听清，干脆把袋子抽出来递给你，「一蚊。」\n你没要，但你已经付了。",
+          "next": "end"
+        },
+        "end": {
+          "type": "ending",
+          "text": "你拎着那支水走进夜里。街上没有别人。"
+        }
+      }
+    },
+
+    {
+      "id": "asking-way",
+      "title": "问路",
+      "subtitle": "你只知道地名，不知道方向",
+      "entry": "enter",
+      "nodes": {
+        "enter": {
+          "type": "narrate",
+          "npc": "旁白",
+          "text": "你在街角站了很久，手机没电。一个阿伯提着菜，正朝你这边走过来。",
+          "next": "ask"
+        },
+        "ask": {
+          "type": "speak",
+          "npc": "阿伯",
+          "npcLine": "（停下脚步，看你）搵边度啊？",
+          "sayTo": "唔该，深水埗点行？",
+          "prompt": "你要说：唔该，深水埗点行？",
+          "expect": "sam-seoi-bou",
+          "onCorrect": "ask-ok",
+          "onMishear": {
+            "sam-seoi-bou-pot": "accident-pot"
+          },
+          "onFallback": "accident-generic-1"
+        },
+        "ask-ok": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "「深水埗啊。」阿伯点点头，「你行前两个街口，转左。」\n他讲得很快，但你听见了。",
+          "next": "confirm"
+        },
+        "accident-pot": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "「深水煲？」阿伯把菜换了个手，「买煲你去深水埗做咩？砵兰街先有得卖喎。」\n他好像真的很关心你要买什么锅。",
+          "explain": "bou-to-bou1",
+          "next": "confirm"
+        },
+        "accident-generic-1": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "「咩话？」阿伯把耳朵侧过来，「大声啲。」\n你又讲了一遍，这次整条街都听见了。",
+          "next": "confirm"
+        },
+        "confirm": {
+          "type": "speak",
+          "npc": "阿伯",
+          "npcLine": "（已经准备走了，又回头）你明唔明啊？",
+          "sayTo": "明，系咪转左？",
+          "prompt": "你要说：明，系咪转左？",
+          "expect": "zyun-zo",
+          "onCorrect": "confirm-ok",
+          "onMishear": {
+            "zyun-zo-block": "accident-block"
+          },
+          "onFallback": "accident-generic-2"
+        },
+        "confirm-ok": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "「系，转左。」阿伯拎起菜走了，走了两步还回头比了个手势。",
+          "next": "end"
+        },
+        "accident-block": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "「阻住？」阿伯停下来，往自己脚边看了看，又看看你，\n很认真地让开了半步——他以为你在嫌他挡路。",
+          "explain": "zo-to-zo-block",
+          "next": "end"
+        },
+        "accident-generic-2": {
+          "type": "narrate",
+          "npc": "阿伯",
+          "text": "阿伯摆摆手，说了句听不清的话，就拎着菜走了。\n你朝他比的方向走过去，走了两条街才发现方向反了。",
+          "next": "end"
+        },
+        "end": {
+          "type": "ending",
+          "text": "街灯一盏一盏亮过去，你还站在原地。"
+        }
+      }
+    }
+  ]
+}

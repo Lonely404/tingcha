@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "version": "0.1.0",
+    "note": "降级内容池。当知乎搜索 / 直答 调用失败、超时、额度耗尽时使用。提交清单第 7 条明文要求「接口失败、额度耗尽和空数据有真实的错误或降级提示」，所以这里的每条内容都必须带 notice，前端必须把 notice 显示出来，不许静默降级。",
+    "urlNote": "stories 里的 url 一律留 null，等电信A把真实帖子链接补进来。绝对不要编造知乎链接。前端在 url 为 null 时只显示标题和摘要，不显示「查看原帖」。"
+  },
+
+  "explainTemplate": {
+    "notice": "直答接口不可用，以下为离线模板生成的解析（内容仍来自本局真实记录）。",
+    "opening": "这一局你一共说岔了 {n} 次。",
+    "perItem": "你想说「{expected}」，对方听到的是「{heard}」。{note}",
+    "closing": "这些不是「发音不标准」的问题，是两个字在粤语里本来就贴得太近。"
+  },
+
+  "stories": [
+    {
+      "id": "fallback-1",
+      "title": "在茶餐厅点冻柠茶，被听成冻零茶",
+      "excerpt": "伙计愣了三秒，回头问水吧「零茶系咩茶」，水吧也答不上来。",
+      "author": null,
+      "url": null,
+      "related": ["ling-cha"],
+      "source": "fallback"
+    },
+    {
+      "id": "fallback-2",
+      "title": "问路被听成买锅，热心阿伯指了三条街",
+      "excerpt": "阿伯一路跟我讲哪家锅好用，我一路点头，最后谁也没发现我们在说两件事。",
+      "author": null,
+      "url": null,
+      "related": ["sam-seoi-bou-pot"],
+      "source": "fallback"
+    }
+  ],
+
+  "emptySearch": {
+    "notice": "这次没搜到同类事故（搜索不可用或返回空结果），先看看上面这两条预存记录。"
+  }
+}

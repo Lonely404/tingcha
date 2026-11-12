@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASR 实测台 · 听岔</title>
+<style>
+  :root { --ink:#1b2130; --line:#e6ded0; --paper:#fbf8f2; --accent:#0b6cff; --warn:#d4622a; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:32px 24px 80px; background:var(--paper); color:var(--ink);
+         font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  h1 { font-size:20px; margin:0 0 6px; letter-spacing:.02em; }
+  .sub { font-size:13px; color:#8b95a8; margin-bottom:26px; line-height:1.8; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+  select, button, input { font-family:inherit; font-size:14px; }
+  select, input[type=text] { border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px 13px; color:var(--ink); }
+  input[type=text] { width:320px; }
+  button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:10px 20px; cursor:pointer; transition:.15s; }
+  button:hover { border-color:#8b95a8; }
+  button.rec { background:var(--warn); border-color:var(--warn); color:#fff; }
+  button.primary { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .log { display:flex; flex-direction:column; gap:9px; margin-top:8px; }
+  .item { border:1px solid var(--line); background:#fff; border-radius:12px; padding:13px 16px; }
+  .item .meta { font-size:11px; color:#8b95a8; margin-bottom:7px; display:flex; gap:12px; flex-wrap:wrap; }
+  .item .main { font-size:17px; line-height:1.6; font-weight:600; }
+  .item .main.hit { color:var(--warn); }
+  .item .alts { margin-top:8px; font-size:12.5px; color:#4a5468; line-height:1.8; }
+  .item .verdict { margin-top:9px; padding-top:9px; border-top:1px dashed var(--line); font-size:12.5px; }
+  .tip { font-size:12px; color:#8b95a8; line-height:1.9; margin-top:24px; border-left:2px solid var(--line); padding-left:14px; }
+  code { background:#f0ece3; padding:1px 5px; border-radius:4px; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<h1>ASR 实测台</h1>
+<div class="sub">
+  电信B 用这一页把「音近词表」从推演变成实测。<br>
+  流程：输入你打算让玩家说的那句粤语 → 反复说 10 次 → 看识别器实际吐出的字符串 → 把真正出现过的错法记进 <code>data/phonetic-map.json</code> 的 mishears。
+</div>
+
+<div class="row">
+  <label>我打算说：</label>
+  <input type="text" id="target" placeholder="例：唔该，一杯冻柠茶" value="唔该，一杯冻柠茶">
+</div>
+
+<div class="row">
+  <label>识别语言：</label>
+  <select id="lang">
+    <option value="zh-HK">zh-HK 粤语（香港）</option>
+    <option value="yue-Hant-HK">yue-Hant-HK 粤语（备用写法）</option>
+    <option value="zh-CN">zh-CN 普通话（对照组）</option>
+  </select>
+  <button id="btn-rec">按下开始说</button>
+  <button id="btn-export" class="primary">导出全部记录</button>
+  <button id="btn-clear">清空</button>
+  <span id="status" style="font-size:12.5px;color:#8b95a8"></span>
+</div>
+
+<div class="log" id="log"></div>
+
+<div class="tip">
+  <b>判读方法</b><br>
+  · 识别结果和你说的完全一致 → 这个说法在 ASR 上太稳，当主线关卡没戏，换说法。<br>
+  · 稳定错成同一个词（10 次里出现 6 次以上）→ <b>这是金矿</b>，直接进 mishears，并把它写成一条岔路。<br>
+  · 每次错得都不一样 → 说明它落在识别器的模糊区，可以当兜底关卡，但不能当主岔路。<br>
+  · 换了设备（手机 / 笔记本 / 耳机麦）结果差别很大 → 记进 <code>verified</code> 备注，别只测一台。<br><br>
+  <b>注意</b>：Chrome / Edge 的语音识别走云端，第一次会要麦克风权限；本页必须用 <code>http://localhost</code> 或 https 打开，直接双击 file:// 不行。
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recording = false, records = [];
+
+if (!SR) {
+  $('status').textContent = '这个浏览器不支持语音识别，请换 Chrome / Edge。';
+  $('btn-rec').disabled = true;
+}
+
+function startRec() {
+  if (!SR) return;
+  rec = new SR();
+  rec.lang = $('lang').value;
+  rec.interimResults = false;
+  rec.continuous = false;
+  rec.maxAlternatives = 5;
+
+  const started = performance.now();
+  rec.onresult = (e) => {
+    const r = e.results[0];
+    const alts = [];
+    for (let i = 0; i < r.length; i++) alts.push({ text: r[i].transcript, conf: +(r[i].confidence || 0).toFixed(3) });
+    addRecord(alts, Math.round(performance.now() - started));
+  };
+  rec.onerror = (e) => { setStatus('出错：' + e.error); endUI(); };
+  rec.onend = endUI;
+
+  try { rec.start(); recording = true; setStatus('听着…'); $('btn-rec').classList.add('rec'); $('btn-rec').textContent = '说完点这里停'; }
+  catch { setStatus('启动失败'); }
+}
+
+function endUI() {
+  recording = false;
+  $('btn-rec').classList.remove('rec');
+  $('btn-rec').textContent = '按下开始说';
+  setStatus('');
+}
+
+function setStatus(t) { $('status').textContent = t; }
+
+function addRecord(alts, ms) {
+  const target = $('target').value.trim();
+  const best = alts[0]?.text || '';
+  const exact = best.replace(/[\s，。！？、,.!?]/g, '') === target.replace(/[\s，。！？、,.!?]/g, '');
+  records.push({ target, lang: rec.lang, best, alts, ms, exact, at: new Date().toISOString() });
+
+  const d = document.createElement('div');
+  d.className = 'item';
+  const miss = [];
+  d.innerHTML = `
+    <div class="meta">
+      <span>${new Date().toLocaleTimeString()}</span>
+      <span>lang=${rec.lang}</span>
+      <span>${ms}ms</span>
+      <span>${alts.length} 个候选</span>
+    </div>
+    <div class="main ${exact ? '' : 'hit'}">${escapeHtml(best) || '（空）'}</div>
+    <div class="alts">${alts.slice(1).map((a, i) => `${i + 2}. ${escapeHtml(a.text)} <span style="color:#8b95a8">(${a.conf})</span>`).join('<br>') || '没有其他候选'}</div>
+    <div class="verdict">相对于「${escapeHtml(target)}」：${exact ? '✓ 一模一样（这个说法太稳，当主线没戏）' : '✗ 说岔了 —— 把这行抄进 phonetic-map.json'}</div>`;
+  $('log').prepend(d);
+}
+
+$('btn-rec').addEventListener('click', () => {
+  if (recording) { try { rec.stop(); } catch {} return; }
+  startRec();
+});
+
+$('btn-export').addEventListener('click', async () => {
+  const text = JSON.stringify(records, null, 2);
+  try { await navigator.clipboard.writeText(text); setStatus('已复制 ' + records.length + ' 条到剪贴板'); }
+  catch { console.log(text); setStatus('复制失败，记录已打到控制台'); }
+});
+
+$('btn-clear').addEventListener('click', () => { records = []; $('log').innerHTML = ''; setStatus('已清空'); });
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+</script>
+</body>
+</html>

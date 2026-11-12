@@ -1,0 +1,112 @@
+{
+  "_meta": {
+    "version": "0.1.0",
+    "owner": "电信B",
+    "note": "音近词表。每条 key 对应 scenes.json 里某个 speak 节点的 expect 字段。correct 与 mishears 里的 heard 都是「ASR 可能吐出来的原文」，命中哪个就分支到哪。verified 为 false 表示尚未经真实设备实测，只是语言学推演。",
+    "matchOrder": ["correct 完全匹配", "mishears 完全匹配", "最长别名包含匹配", "全部未命中 -> onFallback"]
+  },
+
+  "ning-cha": {
+    "canonical": "冻柠茶",
+    "gloss": "冰柠檬茶，茶餐厅点单率最高的一杯",
+    "correct": ["冻柠茶", "凍檸茶", "冻柠檬茶", "凍檸檬茶", "冻拧茶"],
+    "mishears": [
+      {
+        "id": "ling-cha",
+        "label": "冻零茶",
+        "heard": ["冻零茶", "凍零茶", "冻玲茶", "冻灵茶", "冻灵查"],
+        "lineId": "ning-to-ling",
+        "note": "「柠」是 ning，「零」是 ling。粤语懒音把 n 声母并入 l，ning 一滑就成了 ling——两个完全不同的东西。",
+        "verified": false
+      },
+      {
+        "id": "naai-cha",
+        "label": "冻奶茶",
+        "heard": ["冻奶茶", "凍奶茶", "冻乃茶"],
+        "lineId": "ning-to-naai",
+        "note": "「柠 ning」和「奶 naai」韵母差得远，但在嘈杂环境里 ASR 会按常见词先验硬猜成「奶茶」——错得最像真事的一种错。",
+        "verified": false
+      }
+    ]
+  },
+
+  "maai-daan": {
+    "canonical": "埋单",
+    "gloss": "结账",
+    "correct": ["埋单", "买单", "埋單", "唔该埋单", "唔該埋單"],
+    "mishears": [
+      {
+        "id": "maai-daan-egg",
+        "label": "买蛋",
+        "heard": ["买蛋", "買蛋", "埋蛋"],
+        "lineId": "maai-to-egg",
+        "note": "「埋」maai4、「买」maai5，只差一个声调；「单」daan1 与「蛋」daan6 同样只差声调。两个字各错一调，整句话从「结账」变成「买鸡蛋」。",
+        "verified": false
+      }
+    ]
+  },
+
+  "gei-do-cin": {
+    "canonical": "几多钱",
+    "gloss": "多少钱",
+    "correct": ["几多钱", "幾多錢", "几多錢", "多少钱"],
+    "mishears": [
+      {
+        "id": "gei-do-cin-thousand",
+        "label": "几多千",
+        "heard": ["几多千", "幾多千", "几多仟"],
+        "lineId": "cin-to-cin1",
+        "note": "「钱」cin4 是低降调，「千」cin1 是高平调。同一个音节，一个声调之差，问价变成问「几多千」。这是粤语九声系统最容易让机器和人一起翻车的地方。",
+        "verified": false
+      }
+    ]
+  },
+
+  "gaau-doi": {
+    "canonical": "胶袋",
+    "gloss": "塑料袋",
+    "correct": ["胶袋", "膠袋", "塑料袋"],
+    "mishears": [
+      {
+        "id": "gaau-doi-handover",
+        "label": "交带",
+        "heard": ["交带", "交代", "胶带"],
+        "lineId": "doi-to-daai",
+        "note": "「袋」doi2、「带」daai3，元音不同但听感接近；而「交带」在粤语里是「交代、说清楚」的意思——要袋子变成要个说法。",
+        "verified": false
+      }
+    ]
+  },
+
+  "sam-seoi-bou": {
+    "canonical": "深水埗",
+    "gloss": "香港九龙的一个地名",
+    "correct": ["深水埗", "深水埔", "深水步", "深水埗站"],
+    "mishears": [
+      {
+        "id": "sam-seoi-bou-pot",
+        "label": "深水煲",
+        "heard": ["深水煲", "深水堡", "深水宝"],
+        "lineId": "bou-to-bou1",
+        "note": "「埗」bou2 是升调，「煲」bou1 是高平调。只差一个声调，问路变成买菜——本地人一听就知道你不是本地人。",
+        "verified": false
+      }
+    ]
+  },
+
+  "zyun-zo": {
+    "canonical": "转左",
+    "gloss": "左转",
+    "correct": ["转左", "轉左", "转咗左", "向左转"],
+    "mishears": [
+      {
+        "id": "zyun-zo-block",
+        "label": "转阻",
+        "heard": ["转阻", "轉阻", "阻住", "转佐"],
+        "lineId": "zo-to-zo-block",
+        "note": "「左」和「阻」在粤语里读音几乎完全一致。你确认方向，对方听见的是一句嫌他挡路的话。",
+        "verified": false
+      }
+    ]
+  }
+}
