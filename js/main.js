@@ -32,6 +32,12 @@ const el = {
   capNote: $('capability-note'),
   reportScreen: $('report-screen'),
   btnRestart: $('btn-restart'),
+  btnScenes: $('btn-scenes'),
+  sceneMenu: $('scene-menu'),
+  menuCurrent: $('menu-current'),
+  menuList: $('scene-menu-list'),
+  btnMenuClose: $('btn-menu-close'),
+  btnMenuHome: $('btn-menu-home'),
 };
 
 let DATA = null;
@@ -42,6 +48,18 @@ let recognizer = null;
 let recording = false;
 let sceneIndex = 0;
 let idleLineShown = false;
+
+/**
+ * 每一段剧情都有一个令牌。开场 / 换场时令牌自增，
+ * 旧流程在每个 await 之后发现令牌变了就自行退出——
+ * 否则中途切场景后，旧的 await 会继续往对话区写台词，两套剧情叠在一起。
+ */
+let runSeq = 0;
+/** 当前正在等玩家「继续」的那一次点击，空格键复用它 */
+let pendingContinue = null;
+/** 场景 id → 离开时停下的节点，切回来能接着走 */
+const progress = new Map();
+let inGame = false;
 
 /* ---------------- 启动 ---------------- */
 
@@ -81,6 +99,13 @@ async function boot() {
 
   renderScenePicker();
   setupComposer();
+  setupKeyboard();
+  el.btnScenes.addEventListener('click', openSceneMenu);
+  el.btnMenuClose.addEventListener('click', closeSceneMenu);
+  el.btnMenuHome.addEventListener('click', exitToStart);
+  el.sceneMenu.addEventListener('click', (e) => {
+    if (e.target === el.sceneMenu) closeSceneMenu(); // 点遮罩空白处也能关
+  });
   el.btnRestart.addEventListener('click', () => location.reload());
   el.reportScreen.querySelector('#btn-again')?.addEventListener('click', () => location.reload());
   el.reportScreen.querySelector('#btn-share')?.addEventListener('click', onShare);
@@ -129,14 +154,26 @@ function renderScenePicker() {
 
 /* ---------------- 场景流程 ---------------- */
 
-async function startScene(i, { keepLog = false } = {}) {
+async function startScene(i, { keepLog = false, resume = false } = {}) {
+  const myRun = ++runSeq;          // 作废上一段剧情的所有待续流程
   sceneIndex = i;
+  inGame = true;
   idleLineShown = false;
   kanzan.setState(STATES.IDLE);
   kanzan.clear();
-  const node = engine.start(engine.sceneList[i].id, { keepLog });
+
+  const sceneId = engine.sceneList[i].id;
+  if (!keepLog) progress.clear();  // 全新一局，之前的续点作废
+  let node = engine.start(sceneId, { keepLog });
+
+  // 从别处切回来时，回到离开的那一步，而不是重头念一遍
+  if (resume) {
+    const saved = progress.get(sceneId);
+    if (saved && engine.scene.nodes[saved]) node = engine.goTo(saved);
+  }
+
   updateHud();
-  await renderNode(node);
+  await renderNode(node, myRun);
 }
 
 function updateHud() {
@@ -144,8 +181,8 @@ function updateHud() {
   el.statMiss.innerHTML = `说岔 <b>${engine.mistakes}</b> 次`;
 }
 
-async function renderNode(node) {
-  if (!node) return;
+async function renderNode(node, myRun) {
+  if (!node || myRun !== runSeq) return;
 
   if (node.type === 'narrate') {
     pushMsg(node.npc && node.npc !== '旁白' ? node.npc : null, node.text, node.npc === '旁白' ? 'narrator' : '');
@@ -153,6 +190,7 @@ async function renderNode(node) {
     // 事故节点：先演出后果，再让刘看山探头讲解
     if (node.explain) {
       await sleep(420);
+      if (myRun !== runSeq) return;
       const lines = DATA.lines.mishear?.[node.explain] || [];
       const rest = lines.slice(1);
       if (rest.length) {
@@ -163,10 +201,11 @@ async function renderNode(node) {
 
     setComposerEnabled(false);
     await waitContinue(node.next ? '继续' : '看报告');
+    if (myRun !== runSeq) return;    // 等待期间被换场了，这里不再往下走
     if (node.next) {
       const next = engine.goTo(node.next);
       updateHud();
-      return renderNode(next);
+      return renderNode(next, myRun);
     }
     return showReport();
   }
@@ -178,6 +217,7 @@ async function renderNode(node) {
     if (!idleLineShown) {
       idleLineShown = true;
       await kanzan.say(kanzan.pick('idle'));
+      if (myRun !== runSeq) return;
     } else {
       kanzan.clear();
     }
@@ -193,6 +233,8 @@ async function renderNode(node) {
     setComposerEnabled(false);
     const hasNext = sceneIndex + 1 < engine.sceneList.length;
     await waitContinue(hasNext ? `下一场景 · ${engine.sceneList[sceneIndex + 1].title}` : '看听岔报告');
+    if (myRun !== runSeq) return;
+    progress.delete(engine.scene.id); // 这一幕已经走完，别再续到结局里去
     if (hasNext) {
       el.chat.innerHTML = '';
       kanzan.clear();
@@ -211,6 +253,7 @@ async function submit(text, opts = {}) {
   const raw = String(text || '').trim();
   if (!raw) return;
 
+  const myRun = runSeq;             // 换场后这段判定就作废
   busy = true;
   setComposerEnabled(false);
   setHint('');
@@ -228,6 +271,7 @@ async function submit(text, opts = {}) {
       const line = (DATA.lines.mishear?.[turn.lineId] || [])[0];
       await kanzan.say(line || '……等一下。');
       await sleep(700);
+      if (myRun !== runSeq) return;
     } else if (turn.outcome === 'correct') {
       kanzan.setState(STATES.IDLE);
       kanzan.say(kanzan.pick('correct'));
@@ -235,9 +279,10 @@ async function submit(text, opts = {}) {
       kanzan.setState(STATES.HEADTILT);
       kanzan.say('……他没听懂。');
       await sleep(400);
+      if (myRun !== runSeq) return;
     }
 
-    await renderNode(engine.node());
+    await renderNode(engine.node(), myRun);
   } catch (err) {
     console.error('[听岔] 剧情推进失败', err);
     setHint(`这一步卡住了：${err.message}。按右上角「重来」可以继续。`, 'warn');
@@ -360,27 +405,165 @@ function scrollChat() {
   });
 }
 
-/** 等待玩家点「继续」，返回一个可 await 的 promise */
+/**
+ * 等待玩家「继续」，返回一个可 await 的 promise。
+ * 三种触发方式共用同一次 resolve：点按钮、按空格/回车（见 onKeydown）、被换场作废（cancel）。
+ */
 function waitContinue(label) {
   return new Promise((resolve) => {
     const holder = document.createElement('div');
     holder.className = 'msg narrator';
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ghost continue';
-    btn.textContent = label + ' →';
+    btn.innerHTML = `<span>${esc(label)} →</span><kbd>空格</kbd>`;
+
     let done = false;
-    btn.addEventListener('click', () => {
-      if (done) return; // 防连点：连点两次会跳过一整段剧情
+    const settle = () => {
+      if (done) return;               // 防连点：连点两次会跳过一整段剧情
       done = true;
+      if (pendingContinue && pendingContinue.fire === settle) pendingContinue = null;
       btn.disabled = true;
       holder.remove();
       resolve();
-    });
+    };
+
+    btn.addEventListener('click', settle);
     holder.appendChild(btn);
     el.chat.appendChild(holder);
     scrollChat();
+    btn.focus({ preventScroll: true });  // 键盘可及：焦点在这儿，空格/回车天然可用
+
+    pendingContinue = { fire: settle, cancel: settle };
   });
+}
+
+/* ---------------- 键盘 ---------------- */
+
+const isTypingTarget = (t) =>
+  !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+
+const sceneMenuOpen = () => !el.sceneMenu.classList.contains('hidden');
+const startOpen = () => !el.startScreen.classList.contains('hidden');
+const reportOpen = () => !el.reportScreen.classList.contains('hidden');
+
+function setupKeyboard() {
+  document.addEventListener('keydown', onKeydown);
+}
+
+function onKeydown(e) {
+  if (e.isComposing || e.keyCode === 229) return; // 输入法组词中，不抢键
+
+  // Esc：随时打开/收起换场景面板（在输入框里也生效，这是「随时退出」的快捷入口）
+  if (e.key === 'Escape') {
+    if (sceneMenuOpen()) {
+      e.preventDefault();
+      closeSceneMenu();
+      return;
+    }
+    if (startOpen() || reportOpen()) return;
+    e.preventDefault();
+    el.input.blur();
+    openSceneMenu();
+    return;
+  }
+
+  if (isTypingTarget(e.target)) return; // 打字时，空格就是空格
+
+  if (sceneMenuOpen()) return;          // 面板开着，按键交给面板里的按钮
+
+  if (startOpen()) {
+    // 1/2/3 直接进场；空格/回车留给卡片按钮的原生行为，免得和点击抢
+    if (/^[1-9]$/.test(e.key)) {
+      const i = Number(e.key) - 1;
+      if (i < engine.sceneList.length) {
+        e.preventDefault();
+        el.startScreen.classList.add('hidden');
+        startScene(i);
+      }
+    }
+    return;
+  }
+
+  if (reportOpen()) return;
+
+  const isSpace = e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar';
+  const isEnter = e.key === 'Enter';
+  if (!isSpace && !isEnter) return;
+  if (e.repeat) return;                 // 长按空格不连跳
+
+  if (pendingContinue) {
+    e.preventDefault();                 // 拦住页面滚动和按钮的原生激活，只走一次
+    pendingContinue.fire();
+  }
+}
+
+/* ---------------- 场景切换 ---------------- */
+
+function openSceneMenu() {
+  if (!inGame || startOpen() || reportOpen()) return;
+  renderSceneMenu();
+  el.sceneMenu.classList.remove('hidden');
+  el.menuList.querySelector('.scene-card.current')?.focus({ preventScroll: true });
+}
+
+function closeSceneMenu() {
+  el.sceneMenu.classList.add('hidden');
+}
+
+function renderSceneMenu() {
+  el.menuCurrent.textContent = engine.scene?.title || '—';
+  el.menuList.innerHTML = '';
+  engine.sceneList.forEach((s, i) => {
+    const cur = i === sceneIndex;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'scene-card' + (cur ? ' current' : '');
+    b.innerHTML = `<div><div class="t">${esc(s.title)}</div><div class="s">${esc(s.subtitle || '')}</div></div><div class="arrow">${cur ? '当前' : '→'}</div>`;
+    b.addEventListener('click', () => switchScene(i));
+    el.menuList.appendChild(b);
+  });
+}
+
+/** 让当前这段剧情立刻作废：令牌自增 + 解开「继续」的等待 + 收掉正在录的音 */
+function abortRun() {
+  runSeq += 1;
+  pendingContinue?.cancel();
+  pendingContinue = null;
+  busy = false;
+  if (recording) stopRec();
+  setComposerEnabled(false);
+  setHint('');
+}
+
+function saveProgress() {
+  if (engine?.scene && engine.nodeId) progress.set(engine.scene.id, engine.nodeId);
+}
+
+async function switchScene(i) {
+  closeSceneMenu();
+  if (i === sceneIndex) return;  // 点的就是当前场景，等于「回到当前场景」
+  saveProgress();
+  abortRun();
+  el.chat.innerHTML = '';
+  kanzan.clear();
+  await startScene(i, { keepLog: true, resume: true });
+}
+
+function exitToStart() {
+  closeSceneMenu();
+  abortRun();
+  progress.clear();
+  el.chat.innerHTML = '';
+  kanzan.clear();
+  kanzan.setState(STATES.IDLE);
+  inGame = false;
+  sceneIndex = 0;
+  engine.start(engine.sceneList[0].id);  // 回到开始页等于这一局结束，清空战绩
+  el.statScene.textContent = `场景 —/${engine.sceneList.length}`;
+  el.statMiss.innerHTML = '说岔 <b>0</b> 次';
+  el.startScreen.classList.remove('hidden');
 }
 
 /* ---------------- 报告页 ---------------- */

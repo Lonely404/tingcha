@@ -160,6 +160,31 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--paper-2);
   box-shadow: var(--shadow);
 }
+.ghost.continue:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 键盘提示 */
+kbd {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--ink-3);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 3px 6px;
+}
+.ghost.continue kbd { margin-left: 9px; }
+.kbd-note {
+  display: block;
+  margin-bottom: 8px;
+  line-height: 2;
+}
+.kbd-note kbd { margin: 0 2px; }
 
 .msg.heard .bubble {
   background: #fff5ed;
@@ -375,9 +400,31 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--accent-soft);
   transform: translateX(2px);
 }
+.scene-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .scene-card .t { font-size: 15px; font-weight: 600; }
 .scene-card .s { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
 .scene-card .arrow { color: var(--ink-3); font-size: 16px; }
+
+/* 换场景面板里，当前所在的那一条 */
+.scene-card.current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  cursor: default;
+}
+.scene-card.current:hover { transform: none; }
+.scene-card.current .arrow {
+  color: var(--accent);
+  font-size: 11.5px;
+  letter-spacing: .08em;
+}
+
+.scene-menu-panel { max-width: 520px; }
+.scene-menu-panel h2 { font-size: 19px; margin-bottom: 12px; }
+.scene-menu-panel h2 span { color: var(--accent); }
+.scene-menu-panel .scene-picker { margin: 18px 0; }
 
 .panel-foot {
   border-top: 1px solid var(--line);
@@ -558,6 +605,12 @@ button { font-family: inherit; cursor: pointer; }
   .panel { padding: 28px 22px 22px; }
   .panel h1 { font-size: 24px; }
   .tag { display: none; }
+  /* HUD 多了一个「换场景」，窄屏要收紧，否则挤成两行 */
+  .hud { padding: 14px 2px 12px; }
+  .hud-right { gap: 8px; }
+  .hud-right .stat { font-size: 11px; }
+  .hud-right .ghost { padding: 5px 10px; font-size: 11.5px; }
+  .kbd-note { display: none; } /* 手机上没有键盘，这行是噪音 */
 }
 
 /* 尊重系统「减少动态效果」设置 */

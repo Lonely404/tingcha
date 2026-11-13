@@ -27,6 +27,7 @@
     <div class="hud-right">
       <span class="stat" id="stat-scene">场景 —/3</span>
       <span class="stat" id="stat-miss">说岔 0 次</span>
+      <button class="ghost" id="btn-scenes" type="button" title="随时退出当前场景并切换（Esc）">换场景</button>
       <button class="ghost" id="btn-restart" type="button">重来</button>
     </div>
   </header>
@@ -97,6 +98,7 @@
       <div class="scene-card skeleton"><span class="bar w50"></span><span class="bar w35"></span></div>
     </div>
     <div class="panel-foot">
+      <span class="kbd-note">键盘：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 选场景 · <kbd>空格</kbd> 继续 · <kbd>Esc</kbd> 随时换场景</span>
       <span id="capability-note"></span>
     </div>
   </div>
@@ -124,6 +126,23 @@
     <div class="panel-actions">
       <button class="primary" id="btn-again" type="button">再来一局</button>
       <button class="ghost" id="btn-share" type="button">复制分享文案</button>
+    </div>
+  </div>
+</div>
+
+<!-- 场景切换：对话进行中随时退出当前场景 -->
+<div class="overlay hidden" id="scene-menu">
+  <div class="panel scene-menu-panel">
+    <div class="panel-eyebrow">切换场景</div>
+    <h2>现在在「<span id="menu-current">—</span>」</h2>
+    <p class="lede dim">
+      换场景不会清空这一局已经记下的说岔，报告仍按整局统计。<br>
+      切回同一个场景会接着刚才停下的那一步继续。
+    </p>
+    <div class="scene-picker" id="scene-menu-list"></div>
+    <div class="panel-actions">
+      <button class="primary" id="btn-menu-close" type="button">回到当前场景</button>
+      <button class="ghost" id="btn-menu-home" type="button">退出到开始页</button>
     </div>
   </div>
 </div>
@@ -158,7 +177,7 @@
         <span class="n">2</span>
         <div>
           <b>或者手动起一个静态服务器</b>
-          <pre class="code">cd /d "D:\听岔"
+          <pre class="code">cd /d "D:\tingcha"
 python -m http.server 8000</pre>
           <div class="sub">然后访问 http://localhost:8000/index.html</div>
         </div>
